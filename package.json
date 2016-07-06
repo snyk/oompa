@@ -1,0 +1,34 @@
+{
+  "name": "slite",
+  "version": "0.1.0",
+  "description": "A tiny pick-me-app for websocket-based, stateless, microservices.",
+  "main": "index.js",
+  "scripts": {
+    "test": "ava",
+    "coverage": "nyc ava"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oakfang/slite.git"
+  },
+  "author": "Alon Niv",
+  "keywords": [
+    "microservices",
+    "websockets",
+    "stateless",
+    "micro"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/oakfang/slite/issues"
+  },
+  "homepage": "https://github.com/oakfang/slite#readme",
+  "dependencies": {
+    "uuid": "^2.0.2",
+    "ws": "^1.1.1"
+  },
+  "devDependencies": {
+    "ava": "^0.15.2",
+    "nyc": "^6.6.1"
+  }
+}
