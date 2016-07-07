@@ -17,6 +17,7 @@ const OK = (id, payload) => ({
 class SliteServer extends EventEmitter {
   constructor(app, healthcheck=() => Promise.resolve(true)) {
     super();
+    this._middlewareChain = [];
     this._app = app;
     this._httpServer = this.getBaseServer(healthcheck);
     this.tasks = new WeakMap();
@@ -43,6 +44,11 @@ class SliteServer extends EventEmitter {
       this.server.on('connection', con => this.onConnection(con));
       this._httpServer.listen(port, resolve);
     });
+  }
+
+  close() {
+    return new Promise(resolve =>
+      this.server.close(() => this._httpServer.close(resolve)));
   }
 
   passResult(request) {
@@ -87,9 +93,16 @@ class SliteServer extends EventEmitter {
 
   handleRequest(request) {
     if (request.type in this._app) {
-      return this.appCall(request, this._app[request.type]);
+      const chain = this._middlewareChain.concat([
+        req => this.appCall(req, this._app[req.type])
+      ]).map((mid, i) => (req) => mid(req, chain[i + 1]));
+      return Promise.resolve(request).then(chain[0]);
     }
     return this.handleUnknownRequest(request);
+  }
+
+  use(middleware) {
+    this._middlewareChain.push(middleware);
   }
 }
 

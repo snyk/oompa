@@ -205,6 +205,9 @@ test.cb('Stale success', t => {
   }));
 });
 
+const sleep = interval =>
+  new Promise(resolve => setTimeout(resolve, interval));
+
 test('System test', async t => {
   let isHealthy = true;
   const server = new Server(serverApp,
@@ -231,4 +234,22 @@ test('System test', async t => {
       });
     });
   });
+  await new Promise(resolve => {
+    client.once('host-closed', resolve);
+    server.close();
+  });
+  await new Promise(resolve => {
+    client.once('reconnect-failed', resolve);
+  });
+  const nServer = new Server(serverApp);
+  await nServer.listen(45623);
+  await new Promise(resolve => {
+    client.once('reconnected', resolve);
+  });
+  nServer.use((req, next) => {
+    req.payload.x = 5;
+    req.payload.y = 5;
+    return next(req);
+  });
+  t.is(await client.add(3, 5), 10);
 });
