@@ -15,19 +15,26 @@ const OK = (id, payload) => ({
 });
 
 class SliteServer extends EventEmitter {
-  constructor(app) {
+  constructor(app, healthcheck=() => Promise.resolve(true)) {
     super();
     this._app = app;
+    this._httpServer = this.getBaseServer(healthcheck);
     this.tasks = new WeakMap();
-    this._httpServer = this.getBaseServer();
     this.server = new Server({server: this._httpServer});
   }
 
-  getBaseServer() {
+  getBaseServer(healthcheck) {
     return http.createServer((req,res) => {
       res.setHeader('Content-Type', 'text/html');
-      res.writeHead(200, {'Content-Type': 'text/plain'});
-      res.end('ok');
+      return healthcheck()
+        .then(() => {
+          res.writeHead(200, {'Content-Type': 'text/plain'});
+          res.end('ok');
+        }).catch(err => {
+          this.emit('error', err);
+          res.writeHead(500, {'Content-Type': 'text/plain'});
+          res.end('error');
+        });
     });
   }
 

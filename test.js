@@ -1,4 +1,5 @@
 import test from 'ava';
+import request from 'request';
 import EventEmitter from 'events';
 import Server from '.';
 import Client from './client';
@@ -205,7 +206,9 @@ test.cb('Stale success', t => {
 });
 
 test('System test', async t => {
-  const server = new Server(serverApp);
+  let isHealthy = true;
+  const server = new Server(serverApp,
+    () => isHealthy ? Promise.resolve() : Promise.reject(new Error('meow')));
   await server.listen(45623);
   const client = new Client('ws://localhost:45623', clientMethods);
   t.is(await client.add(3, 5), 8);
@@ -215,4 +218,17 @@ test('System test', async t => {
   } catch (err) {
     t.is(err, null);
   }
+  await new Promise(resolve => {
+    server.on('error', err => t.is(err.message, 'meow'));
+    request('http://localhost:45623', (err, resp, body) => {
+      t.is(body, 'ok');
+      t.is(resp.statusCode, 200);
+      isHealthy = false;
+      request('http://localhost:45623', (err, resp, body) => {
+        t.is(body, 'error');
+        t.is(resp.statusCode, 500);
+        resolve();
+      });
+    });
+  });
 });
