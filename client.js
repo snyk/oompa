@@ -5,8 +5,12 @@ const Client = require('ws');
 const uuid = require('uuid').v4;
 
 class SliteClient extends EventEmitter {
-  constructor(url, methods={}, autoInit=true) {
+  constructor(url, methods, autoInit) {
     super();
+    methods = methods || {};
+    if (autoInit === undefined) {
+      autoInit = true;
+    }
     this._resolver = null;
     this._setupMethods(methods);
     this._opened = new Promise(resolve => this._resolver = resolve);
@@ -18,8 +22,11 @@ class SliteClient extends EventEmitter {
 
   _setupMethods(methods) {
     Object.keys(methods).forEach(method => {
-      const { type, factory } = methods[method];
-      this[method] = (...args) => this.dispatch(type, factory(...args));
+      const opts = methods[method];
+      this[method] = (function () {
+        return this.dispatch(opts.type,
+                             opts.factory.apply(null, Array.from(arguments)));
+      }).bind(this);
     });
   }
 
