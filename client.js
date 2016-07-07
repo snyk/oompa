@@ -6,7 +6,7 @@ const uuid = require('uuid').v4;
 
 const CLOSE_ABNORMAL = 1006;
 
-class SliteClient extends EventEmitter {
+class OompaClient extends EventEmitter {
   constructor(url, methods, autoInit) {
     super();
     methods = methods || {};
@@ -84,4 +84,4 @@ class SliteClient extends EventEmitter {
   }
 }
 
-module.exports = SliteClient;
+module.exports = OompaClient;

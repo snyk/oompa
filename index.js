@@ -14,7 +14,7 @@ const OK = (id, payload) => ({
   payload,
 });
 
-class SliteServer extends EventEmitter {
+class OompaServer extends EventEmitter {
   constructor(app, healthcheck=() => Promise.resolve(true)) {
     super();
     this._middlewareChain = [];
@@ -108,4 +108,4 @@ class SliteServer extends EventEmitter {
   }
 }
 
-module.exports = SliteServer;
+module.exports = OompaServer;

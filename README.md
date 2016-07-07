@@ -1,15 +1,16 @@
-# slite
+# oompa
 A tiny pick-me-app for websocket-based, stateless, microservices.
 
 ## Installation
 
-**Server (Node 6+)** `require('slite')`
-**Client (Node 4+)** `require('slite/client')`
+**Server (Node 6+)** `require('oompa')`
+
+**Client (Node 4+)** `require('oompa/client')`
 
 ## Usage
 ### Server
 
-The `slite` library draws inspiration from [redux](https://github.com/reactjs/redux) in that it handles
+The `oompa` library draws inspiration from [redux](https://github.com/reactjs/redux) in that it handles
 typed *tasks* (called `actions` in redux).
 
 The task types are defined in an object called *Application Schema*.
@@ -75,12 +76,12 @@ server
 ```
 
 ### Client
-The Slite client is actually very lean. You can use it in one of two forms:
+The Oompa client is actually very lean. You can use it in one of two forms:
 
 #### Lean usage
 ```js
-const SliteClient = require('slite/client');
-const client = new SliteClient('ws://localhost:9000');
+const OompaClient = require('oompa/client');
+const client = new OompaClient('ws://localhost:9000');
 
 // dispatch accepts the type and the payload of the task
 client.dispatch('ADD', { x: 1, y: 6 }).then(result => {
@@ -90,7 +91,7 @@ client.dispatch('ADD', { x: 1, y: 6 }).then(result => {
 
 #### Verbose Usage
 ```js
-const SliteClient = require('slite/client');
+const OompaClient = require('oompa/client');
 const clientMethods = {
   // [methodName]: {type: [taskType], factory: [methodParams -> taskPayload]}
   add: { type: 'ADD', factory: (x, y) => ({x, y}) },
@@ -98,7 +99,7 @@ const clientMethods = {
   mul: { type: 'MUL', factory: (x, y) => ({x, y}) },
   div: { type: 'DIV', factory: (x, y) => ({x, y}) },
 };
-const client = new SliteClient('ws://localhost:9000', clientMethods);
+const client = new OompaClient('ws://localhost:9000', clientMethods);
 
 client.add(1, 2).then(...);
 ```
@@ -117,7 +118,7 @@ Normally, a server simply forwards the request payload to its factory. Sometimes
 the request go through other steps before reaching the factory, if at all!
 
 ```js
-const Server = require('slite');
+const Server = require('oompa');
 
 const cache = new Map();
 function cacheMiddleware(request, next) {
