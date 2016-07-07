@@ -251,5 +251,8 @@ test('System test', async t => {
     req.payload.y = 5;
     return next(req);
   });
-  t.is(await client.add(3, 5), 10);
+  nServer.use(req => {
+    return req.payload.x * req.payload.y;
+  });
+  t.is(await client.add(3, 5), 25);
 });

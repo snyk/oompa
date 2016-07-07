@@ -86,9 +86,7 @@ class SliteServer extends EventEmitter {
   }
 
   appCall(request, factory) {
-    return factory(request.payload)
-      .then(this.passResult(request))
-      .catch(this.passError(request));
+    return factory(request.payload);
   }
 
   handleRequest(request) {
@@ -96,7 +94,11 @@ class SliteServer extends EventEmitter {
       const chain = this._middlewareChain.concat([
         req => this.appCall(req, this._app[req.type])
       ]).map((mid, i) => (req) => mid(req, chain[i + 1]));
-      return Promise.resolve(request).then(chain[0]);
+      return Promise
+        .resolve(request)
+        .then(chain[0])
+        .then(this.passResult(request))
+        .catch(this.passError(request));
     }
     return this.handleUnknownRequest(request);
   }
