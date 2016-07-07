@@ -35,7 +35,7 @@ a promise that is resolved when we know all is well, and rejected otherwise.
 
 - `close()` - Close both HTTP and WebSockets servers, returns a promise resolved when both are closed.
 
-- `use(middleware)` - see [middleware](#Middleware) section below.
+- `use(middleware)` - see [middleware](#middleware) section below.
 
 #### Server events
 - `error(Error err)`: emitted when the healthcheck fails with error `err`.
