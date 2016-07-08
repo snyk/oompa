@@ -56,7 +56,12 @@ class OompaServer extends EventEmitter {
   }
 
   passError(request) {
-    return error => this.replyWith(request, ERR(request.id, error));
+    return error => {
+      if (error instanceof Error) {
+        error = error.toString();
+      }
+      return this.replyWith(request, ERR(request.id, error))
+    };
   }
 
   onConnection(con) {
