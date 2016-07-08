@@ -44,9 +44,13 @@ class OompaClient extends EventEmitter {
   attemptReconnect() {
     let reconnecting = false;
     this.emit('host-closed');
+    let client;
     const reconAgent = setInterval(() => {
       this._setupConnection();
-      const client = (new Client(this._url)).once('error', err => {
+      if (client) {
+        client.close();
+      }
+      client = (new Client(this._url)).once('error', err => {
         this.emit('reconnect-failed');
       }).once('open', () => {
         clearInterval(reconAgent);
