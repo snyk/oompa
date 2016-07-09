@@ -8,7 +8,9 @@ const serverApp = {
   ADD: ({x, y}) => Promise.resolve(x + y), 
   SUB: ({x, y}) => Promise.resolve(x - y), 
   MUL: ({x, y}) => Promise.resolve(x * y), 
-  DIV: ({x, y}) => Promise[y ? 'resolve' : 'reject'](x / y), 
+  DIV: ({x, y}) => (y ? Promise.resolve(x / y) :
+                        Promise.reject(new Error('Zero div'))),
+  SLEEP: () => new Promise(resolve => setTimeout(resolve, 800)),
 };
 
 const clientMethods = {
@@ -16,6 +18,7 @@ const clientMethods = {
   sub: { type: 'SUB', factory: (x, y) => ({x, y}) },
   mul: { type: 'MUL', factory: (x, y) => ({x, y}) },
   div: { type: 'DIV', factory: (x, y) => ({x, y}) },
+  sleep: { type: 'SLEEP', factory: () => null },
 };
 
 let server;
@@ -35,7 +38,7 @@ test.before(async t => {
   server.server = wsMock;
   await server.listen();
 
-  client = new Client(null, clientMethods, false);
+  client = new Client(null, clientMethods, Client.NO_SERVER);
   client.client = wsClientMock;
   client.start();
   wsClientMock.emit('open');
@@ -170,7 +173,7 @@ test.cb('Known command [failure]', t => {
     const msg = JSON.parse(message);
     t.is(msg.type, 'ERR');
     t.is(msg.id, 0);
-    t.is(msg.error, null);
+    t.is(msg.error, 'Error: Zero div');
     t.end();
   };
   wsMock.emit('connection', connection);
@@ -219,18 +222,24 @@ test('System test', async t => {
     await client.div(3, 0);
     t.fail('Should fail...');
   } catch (err) {
-    t.is(err, null);
+    t.is(err, 'Error: Zero div');
   }
   await new Promise(resolve => {
     server.on('error', err => t.is(err.message, 'meow'));
     request('http://localhost:45623', (err, resp, body) => {
       t.is(body, 'ok');
       t.is(resp.statusCode, 200);
-      isHealthy = false;
-      request('http://localhost:45623', (err, resp, body) => {
-        t.is(body, 'error');
-        t.is(resp.statusCode, 500);
-        resolve();
+      client.ping(100).then(() => {
+        isHealthy = false;
+        request('http://localhost:45623', (err, resp, body) => {
+          t.is(body, 'error');
+          t.is(resp.statusCode, 500);
+          client.ping(100)
+            .then(() => t.fail('Should fail'))
+            .catch(err => {
+              t.is(err, 'Error: meow');
+            }).then(resolve);
+        });
       });
     });
   });
@@ -255,4 +264,16 @@ test('System test', async t => {
     return req.payload.x * req.payload.y;
   });
   t.is(await client.add(3, 5), 25);
+  const sleep = client.sleep();
+  await new Promise(resolve => {
+    client.once('host-closed', resolve);
+    nServer.close();
+  });
+  const lServer = new Server(serverApp);
+  lServer.use(req => 5);
+  await lServer.listen(45623);
+  await new Promise(resolve => {
+    client.once('reconnected', resolve);
+  });
+  t.is(await sleep, 5);
 });

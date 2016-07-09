@@ -19,15 +19,15 @@ class OompaServer extends EventEmitter {
     super();
     this._middlewareChain = [];
     this._app = app;
-    this._httpServer = this.getBaseServer(healthcheck);
-    this.tasks = new WeakMap();
+    this._healthcheck = healthcheck;
+    this._httpServer = this.getBaseServer();
     this.server = new Server({server: this._httpServer});
   }
 
-  getBaseServer(healthcheck) {
+  getBaseServer() {
     return http.createServer((req,res) => {
       res.setHeader('Content-Type', 'text/html');
-      return healthcheck()
+      return this._healthcheck()
         .then(() => {
           res.writeHead(200, {'Content-Type': 'text/plain'});
           res.end('ok');
@@ -51,16 +51,16 @@ class OompaServer extends EventEmitter {
       this.server.close(() => this._httpServer.close(resolve)));
   }
 
-  passResult(request) {
-    return result => this.replyWith(request, OK(request.id, result));
+  passResult(con, request) {
+    return result => this.replyWith(con, request, OK(request.id, result));
   }
 
-  passError(request) {
+  passError(con, request) {
     return error => {
       if (error instanceof Error) {
         error = error.toString();
       }
-      return this.replyWith(request, ERR(request.id, error))
+      return this.replyWith(con, request, ERR(request.id, error))
     };
   }
 
@@ -69,14 +69,12 @@ class OompaServer extends EventEmitter {
     con.on('close', () => this.emit('terminated', con));
     con.on('message', message => {
       const request = JSON.parse(message);
-      this.tasks.set(request, con);
-      this.handleRequest(request);
+      this.handleRequest(request, con);
     });
   }
 
-  replyWith(request, reply) {
+  replyWith(con, request, reply) {
     this.emit('reply', reply);
-    const con = this.tasks.get(request);
     if (con.readyState === con.OPEN) {
       con.send(JSON.stringify(reply));
     } else {
@@ -84,8 +82,8 @@ class OompaServer extends EventEmitter {
     }
   }
 
-  handleUnknownRequest(request) {
-    this.replyWith(request,
+  handleUnknownRequest(con, request) {
+    this.replyWith(con, request,
       ERR(request.id, `Unknown request type: "${request.type}"`)
     );
   }
@@ -94,7 +92,7 @@ class OompaServer extends EventEmitter {
     return factory(request.payload);
   }
 
-  handleRequest(request) {
+  handleRequest(request, con) {
     if (request.type in this._app) {
       const chain = this._middlewareChain.concat([
         req => this.appCall(req, this._app[req.type])
@@ -102,10 +100,15 @@ class OompaServer extends EventEmitter {
       return Promise
         .resolve(request)
         .then(chain[0])
-        .then(this.passResult(request))
-        .catch(this.passError(request));
+        .then(this.passResult(con, request))
+        .catch(this.passError(con, request));
     }
-    return this.handleUnknownRequest(request);
+    if (request.type === '$OOMPA/PING') {
+      return this._healthcheck()
+        .then(this.passResult(con, request))
+        .catch(this.passError(con, request));
+    }
+    return this.handleUnknownRequest(con, request);
   }
 
   use(middleware) {

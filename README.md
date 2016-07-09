@@ -33,9 +33,7 @@ a promise that is resolved when we know all is well, and rejected otherwise.
 
 #### Server methods
 - `listen(port)` - Start listening @`port`. Return a promise resolved when the server is ready.
-
 - `close()` - Close both HTTP and WebSockets servers, returns a promise resolved when both are closed.
-
 - `use(middleware)` - see [middleware](#middleware) section below.
 
 #### Server events
@@ -103,6 +101,10 @@ const client = new OompaClient('ws://localhost:9000', clientMethods);
 
 client.add(1, 2).then(...);
 ```
+
+#### Client methods
+- `constructor(url, methods, reconnectInterval)` - Create a new client with server @ `url`, the specified `methods`, which will attempt to reconnect to a disconnected server every `reconnectInterval` ms (default: 1000).
+- `ping(timeout)` - Check for the server's health. Wait for `timeout` ms until auto-rejecting.
 
 #### Client events
 
