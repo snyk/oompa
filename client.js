@@ -113,6 +113,10 @@ class OompaClient extends EventEmitter {
       }).catch(reject);
     });
   }
+
+  close() {
+    this.client.close();
+  }
 }
 
 OompaClient.NO_SERVER = NO_SERVER;

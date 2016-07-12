@@ -1,6 +1,6 @@
 {
   "name": "oompa",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "A tiny pick-me-app for websocket-based, stateless, microservices.",
   "main": "index.js",
   "scripts": {

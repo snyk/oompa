@@ -276,4 +276,11 @@ test('System test', async t => {
     client.once('reconnected', resolve);
   });
   t.is(await sleep, 5);
+  client.close();
+  try {
+    await client.add(2, 3);
+    t.fail('Should fail.');
+  } catch (e) {
+    t.pass('Client closed');
+  }
 });
