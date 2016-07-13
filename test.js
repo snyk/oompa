@@ -264,7 +264,7 @@ test('System test', async t => {
     return req.payload.x * req.payload.y;
   });
   t.is(await client.add(3, 5), 25);
-  const sleep = client.sleep();
+  const sleeper = client.sleep();
   await new Promise(resolve => {
     client.once('host-closed', resolve);
     nServer.close();
@@ -275,7 +275,18 @@ test('System test', async t => {
   await new Promise(resolve => {
     client.once('reconnected', resolve);
   });
-  t.is(await sleep, 5);
+  t.is(await sleeper, 5);
+  await new Promise(resolve => {
+    request('http://localhost:45623/disconnect', (err, resp, body) => {
+      t.is(body, 'ok');
+      t.is(resp.statusCode, 200);
+      resolve();
+    });
+  });
+  await new Promise(resolve => {
+    client.once('reconnected', resolve);
+  });
+  t.is(await client.add(3, 5), 5);
   client.close();
   try {
     await client.add(2, 3);

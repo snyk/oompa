@@ -5,6 +5,7 @@ const Client = require('ws');
 const uuid = require('uuid').v4;
 
 const CLOSE_ABNORMAL = 1006;
+const SERVER_SHUTTING_OFF = 1000;
 const NO_SERVER = Symbol('@@oompa/no-server');
 
 class OompaClient extends EventEmitter {
@@ -69,7 +70,7 @@ class OompaClient extends EventEmitter {
   start() {
     this.client.once('open', this._resolver);
     this.client.once('close', code => {
-      if (code === CLOSE_ABNORMAL) {
+      if (code === CLOSE_ABNORMAL || code === SERVER_SHUTTING_OFF) {
         this.attemptReconnect();
       }
     });

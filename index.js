@@ -2,6 +2,8 @@ const EventEmitter = require('events');
 const http = require('http');
 const Server = require('ws').Server;
 
+const DISCONNECT_CODE = '/disconnect';
+
 const ERR = (id, error) => ({
   type: 'ERR',
   id,
@@ -27,6 +29,11 @@ class OompaServer extends EventEmitter {
   getBaseServer() {
     return http.createServer((req,res) => {
       res.setHeader('Content-Type', 'text/html');
+      if (req.url.startsWith(DISCONNECT_CODE)) {
+        this.server.clients.forEach(client => client.close());
+        res.writeHead(200, {'Content-Type': 'text/plain'});
+        return res.end('ok');
+      }
       return this._healthcheck()
         .then(() => {
           res.writeHead(200, {'Content-Type': 'text/plain'});
