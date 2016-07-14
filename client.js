@@ -6,6 +6,7 @@ const uuid = require('uuid').v4;
 
 const CLOSE_ABNORMAL = 1006;
 const SERVER_SHUTTING_OFF = 1000;
+const GOING_AWAY = 1001;
 
 class OompaClient extends EventEmitter {
   constructor(url, methods, options) {
@@ -172,7 +173,7 @@ class OompaClient extends EventEmitter {
   }
 
   close() {
-    this.client.close();
+    this.client.close(GOING_AWAY);
   }
 }
 
