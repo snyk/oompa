@@ -6,24 +6,53 @@ const uuid = require('uuid').v4;
 
 const CLOSE_ABNORMAL = 1006;
 const SERVER_SHUTTING_OFF = 1000;
-const NO_SERVER = Symbol('@@oompa/no-server');
 
 class OompaClient extends EventEmitter {
-  constructor(url, methods, reconnectInterval) {
+  constructor(url, methods, options) {
     super();
-    methods = methods || {};
-    if (reconnectInterval === undefined) {
-      reconnectInterval = 1000;
-    }
     this._pending = {};
     this._url = url;
+    this._stats = {
+      timeouts: 0,
+      requests: 0,
+    };
     this._setupMethods(methods);
+    this._setupOptions(options);
     this._setupConnection();
-    this.reconnectInterval = reconnectInterval;
-    if (reconnectInterval !== NO_SERVER) {
+    this._setupEvents();
+    if (!this.noServer) {
       this.client = new Client(url);
       this.start();
     }
+  }
+
+  _setupEvents() {
+    this.on('timeout', () => this._stats.timeouts++);
+    this.on('request', () => this._stats.requests++);
+    this.on('clear', clearInterval);
+    this._agent = setInterval(() => {
+      if (this._stats.requests &&
+          this._stats.timeouts / this._stats.requests > this.tolerance.ratio) {
+        this.client.close();
+        this.attemptReconnect();
+      } else {
+        this._stats.timeouts = 0;
+        this._stats.requests = 0;
+      }
+    }, this.tolerance.interval);
+  }
+
+  _setupOptions(options) {
+    options = options || {};
+    const clone = Object.assign({}, options);
+    if (clone.noServer === undefined) clone.noServer = false;
+    if (clone.reconnectInterval === undefined) clone.reconnectInterval = 1000;
+    if (clone.timeout === undefined) clone.timeout = 10000;
+    if (clone.attempts === undefined) clone.attempts = 3;
+    if (clone.tolerance === undefined) clone.tolerance = {};
+    if (clone.tolerance.ratio === undefined) clone.tolerance.ratio = 0.05;
+    if (clone.tolerance.interval === undefined) clone.tolerance.interval = 10000;
+    Object.assign(this, clone);
   }
 
   _setupConnection() {
@@ -36,6 +65,7 @@ class OompaClient extends EventEmitter {
   }
 
   _setupMethods(methods) {
+    methods = methods || {};
     Object.keys(methods).forEach(method => {
       const opts = methods[method];
       this[method] = (function () {
@@ -47,7 +77,6 @@ class OompaClient extends EventEmitter {
 
   attemptReconnect() {
     let reconnecting = false;
-    this.emit('host-closed');
     let client;
     const reconAgent = setInterval(() => {
       this._setupConnection();
@@ -70,6 +99,7 @@ class OompaClient extends EventEmitter {
   start() {
     this.client.once('open', this._resolver);
     this.client.once('close', code => {
+      this.emit('host-closed');
       if (code === CLOSE_ABNORMAL || code === SERVER_SHUTTING_OFF) {
         this.attemptReconnect();
       }
@@ -79,16 +109,39 @@ class OompaClient extends EventEmitter {
                    message => this.handleMessage(JSON.parse(message)));
   }
 
+  _getTimeoutAgent(request, reject) {
+    let attempts = this.attempts - 1;
+    const timeoutAgent = setInterval(() => {
+      if (attempts) {
+        attempts--;
+        this.sling(request);
+      } else {
+        this.emit('clear', timeoutAgent);
+        this.emit('timeout');
+        reject(new Error('Timeout error'));
+      }
+    }, this.timeout);
+    const cancel = () => {
+      this.emit('clear', timeoutAgent)
+      this.removeListener('host-closed', cancel);
+    };
+    this.once('host-closed', cancel);
+  }
+
   dispatch(type, payload) {
     return this._opened.then(() => new Promise((resolve, reject) => {
+      this.emit('request');
       const id = uuid();
+      const timeoutAgent = this._getTimeoutAgent({type, payload, id}, reject);
       this._pending[id] = {type, payload, id};
       this.once(`OK:${id}`, ok => {
         delete this._pending[id];
+        this.emit('clear', timeoutAgent)
         resolve(ok.payload);
       });
       this.once(`ERR:${id}`, err => {
         delete this._pending[id];
+        this.emit('clear', timeoutAgent)
         reject(err.error);
       });
       this.sling({type, payload, id});
@@ -105,9 +158,12 @@ class OompaClient extends EventEmitter {
   }
 
   ping(timeout) {
+    this.emit('request');
     return new Promise((resolve, reject) => {
-      const timeoutError = setTimeout(() =>
-        reject(new Error('Timeout error')), timeout);
+      const timeoutError = setTimeout(() => {
+        this.emit('timeout');
+        reject(new Error('Timeout error'));
+      }, timeout);
       this.dispatch('$OOMPA/PING').then(res => {
         clearTimeout(timeoutError);
         resolve(res);
@@ -119,7 +175,5 @@ class OompaClient extends EventEmitter {
     this.client.close();
   }
 }
-
-OompaClient.NO_SERVER = NO_SERVER;
 
 module.exports = OompaClient;

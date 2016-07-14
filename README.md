@@ -103,7 +103,12 @@ client.add(1, 2).then(...);
 ```
 
 #### Client methods
-- `constructor(url, methods, reconnectInterval)` - Create a new client with server @ `url`, the specified `methods`, which will attempt to reconnect to a disconnected server every `reconnectInterval` ms (default: 1000).
+- `constructor(url, methods, options)` - Create a new client with server @ `url`, the specified `methods`, with the following options:
+  - `noServer:false` don't actually try to attempt to connect on init.
+  - `reconnectInterval:1000` try to reconnect to a server after server CLOSE event every `reconnectInterval` ms.
+  - `timeout:10000` disregard an attempt of request as a timeout after `timeout` ms.
+  - `attempts:3` reject a request after `attempts` timeouts as a timeout error.
+  - `tolerance:{ratio: 0.05, interval: 10000}` attempt reconnect to server if after `interval` ms, the ratio of timeouts out of total requests exceeds `ratio`.
 - `ping(timeout)` - Check for the server's health. Wait for `timeout` ms until auto-rejecting.
 
 #### Client events

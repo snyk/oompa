@@ -38,7 +38,9 @@ test.before(async t => {
   server.server = wsMock;
   await server.listen();
 
-  client = new Client(null, clientMethods, Client.NO_SERVER);
+  client = new Client(null, clientMethods, {
+    noServer: true,
+  });
   client.client = wsClientMock;
   client.start();
   wsClientMock.emit('open');
@@ -216,7 +218,14 @@ test('System test', async t => {
   const server = new Server(serverApp,
     () => isHealthy ? Promise.resolve() : Promise.reject(new Error('meow')));
   await server.listen(45623);
-  const client = new Client('ws://localhost:45623', clientMethods);
+  const client = new Client('ws://localhost:45623', clientMethods, {
+    tolerance: {
+      ratio: 0.01,
+      interval: 1000,
+    },
+    attempts: 2,
+    timeout: 100,
+  });
   t.is(await client.add(3, 5), 8);
   try {
     await client.div(3, 0);
@@ -224,6 +233,19 @@ test('System test', async t => {
   } catch (err) {
     t.is(err, 'Error: Zero div');
   }
+  try {
+    await client.sleep();
+    t.fail('Should have timed out');
+  } catch (err) {
+    t.is(err.message, 'Timeout error');
+  }
+  try {
+    await client.sleep();
+    t.fail('Should have timed out');
+  } catch (err) {
+    t.is(err.message, 'Timeout error');
+  }
+  await new Promise(resolve => client.once('reconnected', resolve));
   await new Promise(resolve => {
     server.on('error', err => t.is(err.message, 'meow'));
     request('http://localhost:45623', (err, resp, body) => {
@@ -294,4 +316,13 @@ test('System test', async t => {
   } catch (e) {
     t.pass('Client closed');
   }
+  const nClient = new Client('ws://localhost:45623', clientMethods, {
+    tolerance: {
+      interval: 100,
+    },
+  });
+  await nClient.add(2, 3);
+  await nClient.add(2, 3);
+  await sleep(100);
+  t.is(nClient._stats.requests, 0);
 });

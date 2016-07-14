@@ -3,6 +3,7 @@ const http = require('http');
 const Server = require('ws').Server;
 
 const DISCONNECT_CODE = '/disconnect';
+const START_SYM = Symbol('@@start');
 
 const ERR = (id, error) => ({
   type: 'ERR',
@@ -76,12 +77,13 @@ class OompaServer extends EventEmitter {
     con.on('close', () => this.emit('terminated', con));
     con.on('message', message => {
       const request = JSON.parse(message);
+      request[START_SYM] = new Date();
       this.handleRequest(request, con);
     });
   }
 
   replyWith(con, request, reply) {
-    this.emit('reply', reply);
+    this.emit('reply', reply, (new Date()) - request[START_SYM]);
     if (con.readyState === con.OPEN) {
       con.send(JSON.stringify(reply));
     } else {
