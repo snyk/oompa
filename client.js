@@ -173,6 +173,7 @@ class OompaClient extends EventEmitter {
   }
 
   close() {
+    clearInterval(this._agent);
     this.client.close(GOING_AWAY);
   }
 }
