@@ -224,7 +224,8 @@ test('System test', async t => {
       interval: 1000,
     },
     attempts: 2,
-    timeout: 100,
+    reconnectInterval: 100,
+    timeout: 200,
   });
   t.is(await client.add(3, 5), 8);
   try {

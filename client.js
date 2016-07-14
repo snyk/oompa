@@ -115,18 +115,16 @@ class OompaClient extends EventEmitter {
     const timeoutAgent = setInterval(() => {
       if (attempts) {
         attempts--;
-        this.sling(request);
+        try {
+          this.sling(request);
+        } catch (e) { /* fail silently while there are atetmpts */ }
       } else {
         this.emit('clear', timeoutAgent);
         this.emit('timeout');
         reject(new Error('Timeout error'));
       }
     }, this.timeout);
-    const cancel = () => {
-      this.emit('clear', timeoutAgent)
-      this.removeListener('host-closed', cancel);
-    };
-    this.once('host-closed', cancel);
+    return timeoutAgent;
   }
 
   dispatch(type, payload) {
