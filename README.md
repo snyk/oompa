@@ -3,14 +3,14 @@ A tiny pick-me-app for websocket-based, stateless, microservices.
 
 ## Installation
 
-**Server (Node 6+)** `require('oompa')`
+**Server (Node 6+)** `require('snyk-oompa')`
 
-**Client (Node 4+)** `require('oompa/client')`
+**Client (Node 4+)** `require('snyk-oompa/client')`
 
 ## Usage
 ### Server
 
-The `oompa` library draws inspiration from [redux](https://github.com/reactjs/redux) in that it handles
+The `snyk-oompa` library draws inspiration from [redux](https://github.com/reactjs/redux) in that it handles
 typed *tasks* (called `actions` in redux).
 
 The task types are defined in an object called *Application Schema*.
@@ -78,7 +78,7 @@ The Oompa client is actually very lean. You can use it in one of two forms:
 
 #### Lean usage
 ```js
-const OompaClient = require('oompa/client');
+const OompaClient = require('snyk-oompa/client');
 const client = new OompaClient('ws://localhost:9000');
 
 // dispatch accepts the type and the payload of the task
@@ -89,7 +89,7 @@ client.dispatch('ADD', { x: 1, y: 6 }).then(result => {
 
 #### Verbose Usage
 ```js
-const OompaClient = require('oompa/client');
+const OompaClient = require('snyk-oompa/client');
 const clientMethods = {
   // [methodName]: {type: [taskType], factory: [methodParams -> taskPayload]}
   add: { type: 'ADD', factory: (x, y) => ({x, y}) },
@@ -125,7 +125,7 @@ Normally, a server simply forwards the request payload to its factory. Sometimes
 the request go through other steps before reaching the factory, if at all!
 
 ```js
-const Server = require('oompa');
+const Server = require('snyk-oompa');
 
 const cache = new Map();
 function cacheMiddleware(request, next) {
