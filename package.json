@@ -1,15 +1,15 @@
 {
-  "name": "oompa",
-  "version": "0.7.3",
+  "name": "snyk-oompa",
   "description": "A tiny pick-me-app for websocket-based, stateless, microservices.",
   "main": "index.js",
   "scripts": {
-    "test": "ava",
-    "coverage": "nyc ava"
+    "test": "nyc ava -v",
+    "coveralls": "nyc report --reporter=text-lcov | coveralls",
+    "semantic-release": "semantic-release pre && npm publish && semantic-release post"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/oakfang/oompa.git"
+    "url": "git+https://github.com/Snyk/oompa.git"
   },
   "author": "Alon Niv",
   "keywords": [
@@ -20,16 +20,18 @@
   ],
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/oakfang/oompa/issues"
+    "url": "https://github.com/Snyk/oompa/issues"
   },
-  "homepage": "https://github.com/oakfang/oompa#readme",
+  "homepage": "https://github.com/Snyk/oompa#readme",
   "dependencies": {
     "uuid": "^2.0.2",
     "ws": "^1.1.1"
   },
   "devDependencies": {
     "ava": "^0.15.2",
+    "coveralls": "^2.11.11",
     "nyc": "^6.6.1",
-    "request": "^2.72.0"
+    "request": "^2.72.0",
+    "semantic-release": "^4.3.5"
   }
 }
