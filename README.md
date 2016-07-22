@@ -108,7 +108,7 @@ client.add(1, 2).then(...);
   - `reconnectInterval:1000` try to reconnect to a server after server CLOSE event every `reconnectInterval` ms.
   - `timeout:10000` disregard an attempt of request as a timeout after `timeout` ms.
   - `attempts:3` reject a request after `attempts` timeouts as a timeout error.
-  - `tolerance:{ratio: 0.05, interval: 10000}` attempt reconnect to server if after `interval` ms, the ratio of timeouts out of total requests exceeds `ratio`.
+  - `drainInterval:null` if specified, attempt reconnect to server after every `drainInterval` ms.
 - `ping(timeout)` - Check for the server's health. Wait for `timeout` ms until auto-rejecting.
 
 #### Client events

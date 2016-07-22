@@ -218,11 +218,18 @@ test('System test', async t => {
   const server = new Server(serverApp,
     () => isHealthy ? Promise.resolve() : Promise.reject(new Error('meow')));
   await server.listen(45623);
+
+  const nClient = new Client('ws://localhost:45623', clientMethods, {
+    drainInterval: 500,
+  });
+  const task = nClient.sleep();
+  await new Promise(resolve => nClient.once('reconnected', resolve));
+  t.is(await nClient.add(2, 4), 6);
+  await task;
+  await new Promise(resolve => nClient.once('reconnected', resolve));
+  nClient.close();
+
   const client = new Client('ws://localhost:45623', clientMethods, {
-    tolerance: {
-      ratio: 0.01,
-      interval: 1000,
-    },
     attempts: 2,
     reconnectInterval: 100,
     timeout: 200,
@@ -240,13 +247,6 @@ test('System test', async t => {
   } catch (err) {
     t.is(err.message, 'Timeout error');
   }
-  try {
-    await client.sleep();
-    t.fail('Should have timed out');
-  } catch (err) {
-    t.is(err.message, 'Timeout error');
-  }
-  await new Promise(resolve => client.once('reconnected', resolve));
   await new Promise(resolve => {
     server.on('error', err => t.is(err.message, 'meow'));
     request('http://localhost:45623', (err, resp, body) => {
@@ -317,13 +317,4 @@ test('System test', async t => {
   } catch (e) {
     t.pass('Client closed');
   }
-  const nClient = new Client('ws://localhost:45623', clientMethods, {
-    tolerance: {
-      interval: 100,
-    },
-  });
-  await nClient.add(2, 3);
-  await nClient.add(2, 3);
-  await sleep(100);
-  t.is(nClient._stats.requests, 0);
 });
