@@ -226,6 +226,7 @@ test('System test', async t => {
   await new Promise(resolve => nClient.once('reconnected', resolve));
   t.is(await nClient.add(2, 4), 6);
   await task;
+  await new Promise(resolve => nClient.once('reconnected', resolve));
   nClient.close();
 
   const client = new Client('ws://localhost:45623', clientMethods, {

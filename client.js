@@ -31,6 +31,9 @@ class OompaClient extends EventEmitter {
         const staleClient = this.client;
         this.client = null;
         this.attemptReconnect(true);
+        if (!pendingIdsSnapshot.size && staleClient) {
+          return staleClient.close(GOING_AWAY);
+        }
         Array.from(pendingIdsSnapshot).forEach(id => {
           this.once(`REPLY:${id}`, () => {
             pendingIdsSnapshot.delete(id);
