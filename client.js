@@ -13,10 +13,6 @@ class OompaClient extends EventEmitter {
     super();
     this._pending = {};
     this._url = url;
-    this._stats = {
-      timeouts: 0,
-      requests: 0,
-    };
     this._setupMethods(methods);
     this._setupOptions(options);
     this._setupConnection();
@@ -28,19 +24,23 @@ class OompaClient extends EventEmitter {
   }
 
   _setupEvents() {
-    this.on('timeout', () => this._stats.timeouts++);
-    this.on('request', () => this._stats.requests++);
     this.on('clear', clearInterval);
-    this._agent = setInterval(() => {
-      if (this._stats.requests &&
-          this._stats.timeouts / this._stats.requests > this.tolerance.ratio) {
-        this.client.close();
-        this.attemptReconnect();
-      } else {
-        this._stats.timeouts = 0;
-        this._stats.requests = 0;
-      }
-    }, this.tolerance.interval);
+    if (this.drainInterval) {
+      this._agent = setInterval(() => {
+        const pendingIdsSnapshot = new Set(Object.keys(this._pending));
+        const staleClient = this.client;
+        this.client = null;
+        this.attemptReconnect(true);
+        Array.from(pendingIdsSnapshot).forEach(id => {
+          this.once(`REPLY:${id}`, () => {
+            pendingIdsSnapshot.delete(id);
+            if (!pendingIdsSnapshot.size) {
+              staleClient.close(GOING_AWAY);
+            }
+          });
+        });
+      }, this.drainInterval);
+    }
   }
 
   _setupOptions(options) {
@@ -50,9 +50,7 @@ class OompaClient extends EventEmitter {
     if (clone.reconnectInterval === undefined) clone.reconnectInterval = 1000;
     if (clone.timeout === undefined) clone.timeout = 10000;
     if (clone.attempts === undefined) clone.attempts = 3;
-    if (clone.tolerance === undefined) clone.tolerance = {};
-    if (clone.tolerance.ratio === undefined) clone.tolerance.ratio = 0.05;
-    if (clone.tolerance.interval === undefined) clone.tolerance.interval = 10000;
+    if (clone.drainInterval === undefined) clone.drainInterval = null;
     Object.assign(this, clone);
   }
 
@@ -76,7 +74,7 @@ class OompaClient extends EventEmitter {
     });
   }
 
-  attemptReconnect() {
+  attemptReconnect(ignorePending) {
     let reconnecting = false;
     let client;
     const reconAgent = setInterval(() => {
@@ -91,8 +89,10 @@ class OompaClient extends EventEmitter {
         this.client = client;
         this.start();
         this.emit('reconnected');
-        Object.keys(this._pending).forEach(id =>
-          this.sling(this._pending[id]));
+        if (!ignorePending) {
+          Object.keys(this._pending).forEach(id =>
+            this.sling(this._pending[id]));
+        }
       });
     }, this.reconnectInterval);
   }
@@ -153,6 +153,7 @@ class OompaClient extends EventEmitter {
 
   handleMessage(message) {
     const type = message.type;
+    this.emit(`REPLY:${message.id}`, message);
     this.emit(`${type}:${message.id}`, message);
   }
 
@@ -171,7 +172,9 @@ class OompaClient extends EventEmitter {
   }
 
   close() {
-    clearInterval(this._agent);
+    if (this._agent) {
+      clearInterval(this._agent);
+    }
     this.client.close(GOING_AWAY);
   }
 }
