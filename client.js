@@ -117,10 +117,10 @@ class OompaClient extends EventEmitter {
         attempts--;
         try {
           this.sling(request);
-        } catch (e) { /* fail silently while there are atetmpts */ }
+        } catch (e) { /* fail silently while there are attempts */ }
       } else {
         this.emit('clear', timeoutAgent);
-        this.emit('timeout');
+        this.emit(`TIMEOUT:${request.id}`);
         reject(new Error('Timeout error'));
       }
     }, this.timeout);
@@ -161,7 +161,7 @@ class OompaClient extends EventEmitter {
     this.emit('request');
     return new Promise((resolve, reject) => {
       const timeoutError = setTimeout(() => {
-        this.emit('timeout');
+        this.emit('PING-TIMEOUT');
         reject(new Error('Timeout error'));
       }, timeout);
       this.dispatch('$OOMPA/PING').then(res => {
