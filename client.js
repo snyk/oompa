@@ -30,7 +30,7 @@ class OompaClient extends EventEmitter {
         const pendingIdsSnapshot = new Set(Object.keys(this._pending));
         const staleClient = this.client;
         this.client = null;
-        this.attemptReconnect(true);
+        this.attemptReconnect(pendingIdsSnapshot, true);
         if (!pendingIdsSnapshot.size && staleClient) {
           return staleClient.close(GOING_AWAY);
         }
@@ -77,27 +77,34 @@ class OompaClient extends EventEmitter {
     });
   }
 
-  attemptReconnect(ignorePending) {
-    let reconnecting = false;
-    let client;
-    const reconAgent = setInterval(() => {
-      this._setupConnection();
-      if (client) {
-        client.close();
+  _reconAgent(state) {
+    this._setupConnection();
+    if (state.client) {
+      state.client.close();
+    }
+    state.client = (new Client(this._url)).once('error', err => {
+      this.emit('reconnect-failed');
+    }).once('open', () => {
+      if (state.reconAgent) {
+        clearInterval(state.reconAgent);
       }
-      client = (new Client(this._url)).once('error', err => {
-        this.emit('reconnect-failed');
-      }).once('open', () => {
-        clearInterval(reconAgent);
-        this.client = client;
-        this.start();
-        this.emit('reconnected');
-        if (!ignorePending) {
-          Object.keys(this._pending).forEach(id =>
-            this.sling(this._pending[id]));
-        }
-      });
-    }, this.reconnectInterval);
+      this.client = state.client;
+      this.start();
+      this.emit('reconnected');
+      Object.keys(this._pending)
+        .filter(id => state.exclude ? !state.exclude.has(id) : true)
+        .map(id => this._pending[id])
+        .forEach(task => this.sling(task));
+    });
+  }
+
+  attemptReconnect(exclude, autoInvoke) {
+    const state = { exclude };
+    state.reconAgent = setInterval(() => this._reconAgent(state),
+                                   this.reconnectInterval);
+    if (autoInvoke) {
+      this._reconAgent(state);
+    }
   }
 
   start() {
@@ -136,17 +143,15 @@ class OompaClient extends EventEmitter {
       const id = uuid();
       const timeoutAgent = this._getTimeoutAgent({type, payload, id}, reject);
       this._pending[id] = {type, payload, id};
-      this.once(`OK:${id}`, ok => {
+      this.once(`REPLY:${id}`, () => {
         delete this._pending[id];
         this.emit('clear', timeoutAgent)
-        resolve(ok.payload);
       });
-      this.once(`ERR:${id}`, err => {
-        delete this._pending[id];
-        this.emit('clear', timeoutAgent)
-        reject(err.error);
-      });
-      this.sling({type, payload, id});
+      this.once(`OK:${id}`, ok => resolve(ok.payload));
+      this.once(`ERR:${id}`, err => reject(err.error));
+      if (this.client) {  
+        this.sling({type, payload, id});
+      }
     }));
   }
 
