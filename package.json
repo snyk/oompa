@@ -3,7 +3,7 @@
   "description": "A tiny pick-me-app for websocket-based, stateless, microservices.",
   "main": "index.js",
   "scripts": {
-    "test": "nyc ava -v",
+    "test": "snyk test && nyc ava -v",
     "coveralls": "nyc report --reporter=text-lcov | coveralls",
     "semantic-release": "semantic-release pre && npm publish && semantic-release post"
   },
@@ -18,7 +18,7 @@
     "stateless",
     "micro"
   ],
-  "license": "MIT",
+  "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/Snyk/oompa/issues"
   },
@@ -32,6 +32,8 @@
     "coveralls": "^2.11.11",
     "nyc": "^6.6.1",
     "request": "^2.72.0",
-    "semantic-release": "^4.3.5"
+    "semantic-release": "^4.3.5",
+    "snyk": "^1.17.1",
+    "then-sleep": "^1.0.1"
   }
 }
