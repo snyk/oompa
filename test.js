@@ -1,5 +1,6 @@
 import test from 'ava';
 import request from 'request';
+import sleep from 'then-sleep';
 import EventEmitter from 'events';
 import Server from '.';
 import Client from './client';
@@ -10,7 +11,7 @@ const serverApp = {
   MUL: ({x, y}) => Promise.resolve(x * y), 
   DIV: ({x, y}) => (y ? Promise.resolve(x / y) :
                         Promise.reject(new Error('Zero div'))),
-  SLEEP: () => new Promise(resolve => setTimeout(resolve, 800)),
+  SLEEP: () => sleep(500),
 };
 
 const clientMethods = {
@@ -23,6 +24,8 @@ const clientMethods = {
 
 let server;
 let client;
+let _serverPort = 45610;
+const getPort = () => _serverPort++;
 
 const wsMock = new EventEmitter();
 const wsClientMock = new EventEmitter();
@@ -44,6 +47,10 @@ test.before(async t => {
   client.client = wsClientMock;
   client.start();
   wsClientMock.emit('open');
+});
+
+test.beforeEach(t => {
+  t.context.port = getPort();
 });
 
 test.afterEach(() => wsClientMock.send = null);
@@ -210,30 +217,10 @@ test.cb('Stale success', t => {
   }));
 });
 
-const sleep = interval =>
-  new Promise(resolve => setTimeout(resolve, interval));
-
-test('System test', async t => {
-  let isHealthy = true;
-  const server = new Server(serverApp,
-    () => isHealthy ? Promise.resolve() : Promise.reject(new Error('meow')));
-  await server.listen(45623);
-
-  const nClient = new Client('ws://localhost:45623', clientMethods, {
-    drainInterval: 500,
-  });
-  const task = nClient.sleep();
-  await new Promise(resolve => nClient.once('reconnected', resolve));
-  t.is(await nClient.add(2, 4), 6);
-  await task;
-  await new Promise(resolve => nClient.once('reconnected', resolve));
-  nClient.close();
-
-  const client = new Client('ws://localhost:45623', clientMethods, {
-    attempts: 2,
-    reconnectInterval: 100,
-    timeout: 200,
-  });
+test('[System] Trivial usage', async t => {
+  const server = new Server(serverApp);
+  await server.listen(t.context.port);
+  const client = new Client(`ws://localhost:${t.context.port}`, clientMethods);
   t.is(await client.add(3, 5), 8);
   try {
     await client.div(3, 0);
@@ -241,20 +228,52 @@ test('System test', async t => {
   } catch (err) {
     t.is(err, 'Error: Zero div');
   }
+});
+
+test('[System] Drain interval test', async t => {
+  const server = new Server(serverApp);
+  await server.listen(t.context.port);
+  const client = new Client(`ws://localhost:${t.context.port}`, clientMethods, {
+    drainInterval: 100,
+  });
+  const task = client.sleep();
+  await new Promise(resolve => client.once('reconnected', resolve));
+  t.is(await client.add(2, 4), 6);
+  await task;
+  await new Promise(resolve => client.once('reconnected', resolve));
+  client.close();
+});
+
+test('[System] Timeout test', async t => {
+  const server = new Server(serverApp);
+  await server.listen(t.context.port);
+  const client = new Client(`ws://localhost:${t.context.port}`, clientMethods, {
+    attempts: 2,
+    reconnectInterval: 100,
+    timeout: 200,
+  });
   try {
     await client.sleep();
     t.fail('Should have timed out');
   } catch (err) {
     t.is(err.message, 'Timeout error');
   }
+});
+
+test('[System] Healthcheck test', async t => {
+  let isHealthy = true;
+  const healthCheck = () => isHealthy ? Promise.resolve() : Promise.reject(new Error('meow'));
+  const server = new Server(serverApp, healthCheck);
+  await server.listen(t.context.port);
+  const client = new Client(`ws://localhost:${t.context.port}`, clientMethods);
   await new Promise(resolve => {
     server.on('error', err => t.is(err.message, 'meow'));
-    request('http://localhost:45623', (err, resp, body) => {
+    request(`http://localhost:${t.context.port}`, (err, resp, body) => {
       t.is(body, 'ok');
       t.is(resp.statusCode, 200);
       client.ping(100).then(() => {
         isHealthy = false;
-        request('http://localhost:45623', (err, resp, body) => {
+        request(`http://localhost:${t.context.port}`, (err, resp, body) => {
           t.is(body, 'error');
           t.is(resp.statusCode, 500);
           client.ping(100)
@@ -266,6 +285,17 @@ test('System test', async t => {
       });
     });
   });
+});
+
+test('[System] Server close and reconnect', async t => {
+  const PORT = t.context.port;
+  const URL = `ws://localhost:${PORT}`;
+  const server = new Server(serverApp);
+  await server.listen(PORT);
+  const client = new Client(URL, clientMethods, {
+    reconnectInterval: 100,
+  });
+  client.on('error', () => null);
   await new Promise(resolve => {
     client.once('host-closed', resolve);
     server.close();
@@ -274,33 +304,50 @@ test('System test', async t => {
     client.once('reconnect-failed', resolve);
   });
   const nServer = new Server(serverApp);
-  await nServer.listen(45623);
+  await nServer.listen(PORT);
   await new Promise(resolve => {
     client.once('reconnected', resolve);
   });
-  nServer.use((req, next) => {
-    req.payload.x = 5;
-    req.payload.y = 5;
-    return next(req);
-  });
-  nServer.use(req => {
-    return req.payload.x * req.payload.y;
-  });
-  t.is(await client.add(3, 5), 25);
   const sleeper = client.sleep();
   await new Promise(resolve => {
     client.once('host-closed', resolve);
     nServer.close();
   });
   const lServer = new Server(serverApp);
+  // Using middleware here to shortcut sleep
   lServer.use(req => 5);
-  await lServer.listen(45623);
+  await lServer.listen(PORT);
   await new Promise(resolve => {
     client.once('reconnected', resolve);
   });
   t.is(await sleeper, 5);
+});
+
+test('[System] Middleware test', async t => {
+  const server = new Server(serverApp);
+  await server.listen(t.context.port);
+  const client = new Client(`ws://localhost:${t.context.port}`, clientMethods);
+  server.use((req, next) => {
+    req.payload.x = 5;
+    req.payload.y = 5;
+    return next(req);
+  });
+  server.use(req => {
+    return req.payload.x * req.payload.y;
+  });
+  t.is(await client.add(3, 5), 25);
+});
+
+test('[System] Disconnect hook test', async t => {
+  const PORT = t.context.port;
+  const url = proto => `${proto}://localhost:${PORT}`;
+  const server = new Server(serverApp);
+  await server.listen(PORT);
+  const client = new Client(url('ws'), clientMethods, {
+    reconnectInterval: 100,
+  });
   await new Promise(resolve => {
-    request('http://localhost:45623/disconnect', (err, resp, body) => {
+    request(url('http') + '/disconnect', (err, resp, body) => {
       t.is(body, 'ok');
       t.is(resp.statusCode, 200);
       resolve();
@@ -309,7 +356,13 @@ test('System test', async t => {
   await new Promise(resolve => {
     client.once('reconnected', resolve);
   });
-  t.is(await client.add(3, 5), 5);
+});
+
+test('[System] Client .close test', async t => {
+  const server = new Server(serverApp);
+  await server.listen(t.context.port);
+  const client = new Client(`ws://localhost:${t.context.port}`, clientMethods);
+  t.is(await client.add(3, 5), 8);
   client.close();
   try {
     await client.add(2, 3);
