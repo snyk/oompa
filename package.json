@@ -33,6 +33,7 @@
     "nyc": "^6.6.1",
     "request": "^2.72.0",
     "semantic-release": "^4.3.5",
-    "snyk": "^1.17.1"
+    "snyk": "^1.17.1",
+    "then-sleep": "^1.0.1"
   }
 }

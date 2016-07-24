@@ -37,7 +37,7 @@ class OompaClient extends EventEmitter {
         Array.from(pendingIdsSnapshot).forEach(id => {
           this.once(`REPLY:${id}`, () => {
             pendingIdsSnapshot.delete(id);
-            if (!pendingIdsSnapshot.size) {
+            if (!pendingIdsSnapshot.size && staleClient) {
               staleClient.close(GOING_AWAY);
             }
           });
