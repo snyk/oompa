@@ -27,7 +27,10 @@ class OompaClient extends EventEmitter {
     this.on('clear', clearInterval);
     if (this.drainInterval) {
       this._agent = setInterval(() => {
-        const pendingIdsSnapshot = new Set(Object.keys(this._pending));
+        const pendingIdsSnapshot = new Set(
+          Object.keys(this._pending)
+            .filter(id => this._pending[id].con === this.client)
+        );
         const staleClient = this.client;
         this.client = null;
         this.attemptReconnect(pendingIdsSnapshot, true);
@@ -93,7 +96,7 @@ class OompaClient extends EventEmitter {
       this.emit('reconnected');
       Object.keys(this._pending)
         .filter(id => state.exclude ? !state.exclude.has(id) : true)
-        .map(id => this._pending[id])
+        .map(id => this._pending[id].request)
         .forEach(task => this.sling(task));
     });
   }
@@ -142,7 +145,10 @@ class OompaClient extends EventEmitter {
       this.emit('request');
       const id = uuid();
       const timeoutAgent = this._getTimeoutAgent({type, payload, id}, reject);
-      this._pending[id] = {type, payload, id};
+      this._pending[id] = {
+        request: {type, payload, id},
+        con: this.client,
+      };
       this.once(`REPLY:${id}`, () => {
         delete this._pending[id];
         this.emit('clear', timeoutAgent)
