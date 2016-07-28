@@ -17,6 +17,14 @@ const OK = (id, payload) => ({
   payload,
 });
 
+const PUSH = (event, payload) => ({
+  type: 'PUSH',
+  event,
+  payload,
+});
+
+const BROADCAST = Symbol('@@broadcast');
+
 class OompaServer extends EventEmitter {
   constructor(app, healthcheck=() => Promise.resolve(true)) {
     super();
@@ -82,13 +90,29 @@ class OompaServer extends EventEmitter {
     });
   }
 
+  push(eventType, eventData, scope=BROADCAST) {
+    const e = PUSH(eventType, eventData);
+    if (scope === BROADCAST) {
+      scope = this.server.clients;
+    }
+    if (Array.isArray(scope)) {
+      scope.forEach(con => this.sendTo(con, e));
+    } else {
+      this.sendTo(scope, e);
+    }
+  }
+
+  sendTo(con, data) {
+    if (con.readyState === con.OPEN) {
+      con.send(JSON.stringify(data));
+    } else {
+      this.emit('stale', data);
+    }
+  }
+
   replyWith(con, request, reply) {
     this.emit('reply', reply, (new Date()) - request[START_SYM]);
-    if (con.readyState === con.OPEN) {
-      con.send(JSON.stringify(reply));
-    } else {
-      this.emit('stale', reply);
-    }
+    this.sendTo(con, reply);
   }
 
   handleUnknownRequest(con, request) {
@@ -124,5 +148,7 @@ class OompaServer extends EventEmitter {
     this._middlewareChain.push(middleware);
   }
 }
+
+OompaServer.BROADCAST = BROADCAST;
 
 module.exports = OompaServer;

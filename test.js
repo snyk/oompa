@@ -371,3 +371,24 @@ test('[System] Client .close test', async t => {
     t.pass('Client closed');
   }
 });
+
+test('[System] Push events test', async t => {
+  const connections = [];
+  const server = new Server(serverApp);
+  server.on('connection', connections.push.bind(connections));
+  await server.listen(t.context.port);
+  const client1 = new Client(`ws://localhost:${t.context.port}`, clientMethods);
+  await new Promise(resolve => server.once('connection', resolve));
+  const client2 = new Client(`ws://localhost:${t.context.port}`, clientMethods);
+  await new Promise(resolve => server.once('connection', resolve));
+  let state1 = 0;
+  let state2 = 0;
+  client1.on('foo', () => state1++);
+  client2.on('foo', () => state2++);
+  server.push('foo');
+  server.push('foo', null, connections[0]);
+  server.push('foo', null, connections);
+  await sleep(100);
+  t.is(state1, 3);
+  t.is(state2, 2);
+});

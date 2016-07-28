@@ -35,6 +35,7 @@ a promise that is resolved when we know all is well, and rejected otherwise.
 - `listen(port)` - Start listening @`port`. Return a promise resolved when the server is ready.
 - `close()` - Close both HTTP and WebSockets servers, returns a promise resolved when both are closed.
 - `use(middleware)` - see [middleware](#middleware) section below.
+- `push(eventType, eventData, scope)` - push an event of type `eventType` with payload `eventData` to all clients in `scope`. By default, `scope` is all connected clients, but it also accepts an array of connections, or a single connection object.
 
 #### Server events
 - `error(Error err)`: emitted when the healthcheck fails with error `err`.
@@ -119,6 +120,7 @@ client.add(1, 2).then(...);
 - `reconnected`: emitted when the last attempt to reconnect was successful
 - `OK:<TASK-ID>`: emitted when task <TASK-ID> received an OK reply from the server, with its payload
 - `ERR:<TASK-ID>`: emitted when task <TASK-ID> received an ERR reply from the server, with its error
+- **Server sent events:** the `OompaServer` can push events to any and all of its clients. They are treated just like any other event.
 
 ### Middleware
 Normally, a server simply forwards the request payload to its factory. Sometimes, however, you'd rather
