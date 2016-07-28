@@ -167,6 +167,9 @@ class OompaClient extends EventEmitter {
 
   handleMessage(message) {
     const type = message.type;
+    if (type === 'PUSH') {
+      return this.emit(message.event, message.payload);
+    }
     this.emit(`REPLY:${message.id}`, message);
     this.emit(`${type}:${message.id}`, message);
   }
