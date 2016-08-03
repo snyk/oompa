@@ -6,9 +6,9 @@ import Server from '.';
 import Client from './client';
 
 const serverApp = {
-  ADD: ({x, y}) => Promise.resolve(x + y), 
-  SUB: ({x, y}) => Promise.resolve(x - y), 
-  MUL: ({x, y}) => Promise.resolve(x * y), 
+  ADD: ({x, y}) => Promise.resolve(x + y),
+  SUB: ({x, y}) => Promise.resolve(x - y),
+  MUL: ({x, y}) => Promise.resolve(x * y),
   DIV: ({x, y}) => (y ? Promise.resolve(x / y) :
                         Promise.reject(new Error('Zero div'))),
   SLEEP: () => sleep(500),
@@ -21,6 +21,9 @@ const clientMethods = {
   div: { type: 'DIV', factory: (x, y) => ({x, y}) },
   sleep: { type: 'SLEEP', factory: () => null },
 };
+
+const eventOf = (emitter, event) =>
+  new Promise(resolve => emitter.once(event, resolve));
 
 let server;
 let client;
@@ -295,19 +298,17 @@ test('[System] Server close and reconnect', async t => {
   const client = new Client(URL, clientMethods, {
     reconnectInterval: 100,
   });
+  await eventOf(client, 'ready');
   client.on('error', () => null);
   await new Promise(resolve => {
     client.once('host-closed', resolve);
     server.close();
   });
-  await new Promise(resolve => {
-    client.once('reconnect-failed', resolve);
-  });
+  await eventOf(client, 'reconnecting');
+  await eventOf(client, 'reconnect-failed');
   const nServer = new Server(serverApp);
   await nServer.listen(PORT);
-  await new Promise(resolve => {
-    client.once('reconnected', resolve);
-  });
+  await eventOf(client, 'reconnected');
   const sleeper = client.sleep();
   await new Promise(resolve => {
     client.once('host-closed', resolve);
@@ -317,9 +318,7 @@ test('[System] Server close and reconnect', async t => {
   // Using middleware here to shortcut sleep
   lServer.use(req => 5);
   await lServer.listen(PORT);
-  await new Promise(resolve => {
-    client.once('reconnected', resolve);
-  });
+  await eventOf(client, 'reconnected');
   t.is(await sleeper, 5);
 });
 
@@ -353,9 +352,7 @@ test('[System] Disconnect hook test', async t => {
       resolve();
     });
   });
-  await new Promise(resolve => {
-    client.once('reconnected', resolve);
-  });
+  await eventOf(client, 'reconnected');
 });
 
 test('[System] Client .close test', async t => {

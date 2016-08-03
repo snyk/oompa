@@ -48,10 +48,10 @@ a promise that is resolved when we know all is well, and rejected otherwise.
 
 ```js
 const serverApp = {
-  ADD: ({x, y}) => Promise.resolve(x + y), 
-  SUB: ({x, y}) => Promise.resolve(x - y), 
-  MUL: ({x, y}) => Promise.resolve(x * y), 
-  DIV: ({x, y}) => Promise[y ? 'resolve' : 'reject'](x / y), 
+  ADD: ({x, y}) => Promise.resolve(x + y),
+  SUB: ({x, y}) => Promise.resolve(x - y),
+  MUL: ({x, y}) => Promise.resolve(x * y),
+  DIV: ({x, y}) => Promise[y ? 'resolve' : 'reject'](x / y),
 };
 
 function healthcheck() {
@@ -118,6 +118,8 @@ client.add(1, 2).then(...);
 - `host-closed`: emitted when the host is closed abnormally (attempts to reconnect every 1 second)
 - `reconnect-failed`: emitted when an attempt to reconnect has failed
 - `reconnected`: emitted when the last attempt to reconnect was successful
+- `reconnecting`: emitted when the client is attempting to reconnect to the server
+- `ready`: emitted when the client is initially connected to the server
 - `OK:<TASK-ID>`: emitted when task <TASK-ID> received an OK reply from the server, with its payload
 - `ERR:<TASK-ID>`: emitted when task <TASK-ID> received an ERR reply from the server, with its error
 - **Server sent events:** the `OompaServer` can push events to any and all of its clients. They are treated just like any other event.
@@ -142,10 +144,10 @@ function cacheMiddleware(request, next) {
 }
 
 const serverApp = {
-  ADD: ({x, y}) => Promise.resolve(x + y), 
-  SUB: ({x, y}) => Promise.resolve(x - y), 
-  MUL: ({x, y}) => Promise.resolve(x * y), 
-  DIV: ({x, y}) => Promise[y ? 'resolve' : 'reject'](x / y), 
+  ADD: ({x, y}) => Promise.resolve(x + y),
+  SUB: ({x, y}) => Promise.resolve(x - y),
+  MUL: ({x, y}) => Promise.resolve(x * y),
+  DIV: ({x, y}) => Promise[y ? 'resolve' : 'reject'](x / y),
 };
 
 function healthcheck() {
