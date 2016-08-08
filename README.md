@@ -170,3 +170,12 @@ server
       ({type, id}) => logger.warn(`[${type}] for stale request #${id}`))
   .listen(PORT).then(() => logger.info(`Listening on port ${PORT}`));
 ```
+
+### Bundled Middleware
+`oompa` ships with some middleware:
+
+#### Oomp Pool
+The `pool(concurrency=10, maxQueued=30)` middleware makes sure only up to
+`concurrency` active API calls are handled, while up to `maxQueued` are queued.
+Should a new API request be made while the number of *queued* requests is at `maxQueued`,
+it would be rejected automatically. 
