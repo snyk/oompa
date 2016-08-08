@@ -437,7 +437,7 @@ test('[System] middleware/pool', async t => {
                                                       client.wait(
                                                         (i + 1) * 100)
                                                      );
-  await sleep(120);
+  await sleep(140);
   t.is(pool._queued, 2);
   t.is(pool._active.size, 2);
   await Promise.all([a, b, c, d]);
