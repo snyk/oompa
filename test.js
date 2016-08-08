@@ -435,9 +435,9 @@ test('[System] middleware/pool', async t => {
   const client = new Client(`ws://localhost:${t.context.port}`, clientMethods);
   const [a, b, c, d, e] = Array.from({ length: 5 }).map((_, i) =>
                                                       client.wait(
-                                                        (i + 1) * 50)
+                                                        (i + 1) * 100)
                                                      );
-  await sleep(80);
+  await sleep(120);
   t.is(pool._queued, 2);
   t.is(pool._active.size, 2);
   await Promise.all([a, b, c, d]);
