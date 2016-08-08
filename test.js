@@ -432,12 +432,21 @@ test('[System] middleware/pool', async t => {
   const pool = poolM.pool;
   server.use(poolM);
   await server.listen(t.context.port);
+  const requestsSent = new Promise(resolve => {
+    let state = 0;
+    server.on('request', () => {
+      state++;
+      if (state === 5) {
+        resolve();
+      }
+    });
+  });
   const client = new Client(`ws://localhost:${t.context.port}`, clientMethods);
   const [a, b, c, d, e] = Array.from({ length: 5 }).map((_, i) =>
                                                       client.wait(
-                                                        (i + 1) * 100)
+                                                        (i + 1) * 50)
                                                      );
-  await sleep(140);
+  await requestsSent;
   t.is(pool._queued, 2);
   t.is(pool._active.size, 2);
   await Promise.all([a, b, c, d]);
