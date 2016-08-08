@@ -81,6 +81,7 @@ class OompaClient extends EventEmitter {
   }
 
   _reconAgent(state) {
+    this.emit('reconnecting');
     this._setupConnection();
     if (state.client) {
       state.client.close();
@@ -111,7 +112,10 @@ class OompaClient extends EventEmitter {
   }
 
   start() {
-    this.client.once('open', this._resolver);
+    this.client.once('open', () => {
+      this.emit('ready');
+      this._resolver();
+    });
     this.client.once('close', code => {
       this.emit('host-closed');
       if (code === CLOSE_ABNORMAL || code === SERVER_SHUTTING_OFF) {
@@ -155,7 +159,7 @@ class OompaClient extends EventEmitter {
       });
       this.once(`OK:${id}`, ok => resolve(ok.payload));
       this.once(`ERR:${id}`, err => reject(err.error));
-      if (this.client) {  
+      if (this.client) {
         this.sling({type, payload, id});
       }
     }));
