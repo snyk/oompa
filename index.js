@@ -76,7 +76,7 @@ class OompaServer extends EventEmitter {
       if (error instanceof Error) {
         error = error.toString();
       }
-      return this.replyWith(con, request, ERR(request.id, error))
+      return this.replyWith(con, request, ERR(request.id, error));
     };
   }
 
@@ -126,6 +126,7 @@ class OompaServer extends EventEmitter {
   }
 
   handleRequest(request, con) {
+    this.emit('request', request);
     if (request.type in this._app) {
       const chain = this._middlewareChain.concat([
         req => this.appCall(req, this._app[req.type])
