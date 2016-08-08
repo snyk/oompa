@@ -4,22 +4,26 @@ import sleep from 'then-sleep';
 import EventEmitter from 'events';
 import Server from '.';
 import Client from './client';
+import PromisePool from './middleware/pool/promise-pool';
+import oompaPool from './middleware/pool';
 
 const serverApp = {
-  ADD: ({x, y}) => Promise.resolve(x + y),
-  SUB: ({x, y}) => Promise.resolve(x - y),
-  MUL: ({x, y}) => Promise.resolve(x * y),
-  DIV: ({x, y}) => (y ? Promise.resolve(x / y) :
+  ADD: ({ x, y }) => Promise.resolve(x + y),
+  SUB: ({ x, y }) => Promise.resolve(x - y),
+  MUL: ({ x, y }) => Promise.resolve(x * y),
+  DIV: ({ x, y }) => (y ? Promise.resolve(x / y) :
                         Promise.reject(new Error('Zero div'))),
   SLEEP: () => sleep(500),
+  WAIT: (n) => sleep(n),
 };
 
 const clientMethods = {
-  add: { type: 'ADD', factory: (x, y) => ({x, y}) },
-  sub: { type: 'SUB', factory: (x, y) => ({x, y}) },
-  mul: { type: 'MUL', factory: (x, y) => ({x, y}) },
-  div: { type: 'DIV', factory: (x, y) => ({x, y}) },
+  add: { type: 'ADD', factory: (x, y) => ({ x, y }) },
+  sub: { type: 'SUB', factory: (x, y) => ({ x, y }) },
+  mul: { type: 'MUL', factory: (x, y) => ({ x, y }) },
+  div: { type: 'DIV', factory: (x, y) => ({ x, y }) },
   sleep: { type: 'SLEEP', factory: () => null },
+  wait: { type: 'WAIT', factory: (n) => n },
 };
 
 const eventOf = (emitter, event) =>
@@ -33,7 +37,7 @@ const getPort = () => _serverPort++;
 const wsMock = new EventEmitter();
 const wsClientMock = new EventEmitter();
 const httpServerMock = {
-  listen(_port, cb) { cb() },
+  listen(_port, cb) { cb(); },
 };
 
 test.before(async t => {
@@ -57,6 +61,38 @@ test.beforeEach(t => {
 });
 
 test.afterEach(() => wsClientMock.send = null);
+
+test('[Unit] PromisePool test', async t => {
+  const pool = new PromisePool(2, 2);
+  const factory = n => pool.wrap(() => sleep(n * 40));
+  const a = pool.run(() => Promise.reject(5));
+  const [b, c, d, e] = Array.from({ length: 4 }).map((_, i) =>
+                                                      factory(i + 1)());
+  t.is(pool._queued, 2);
+  t.is(pool._active.size, 2);
+  try {
+    await a;
+  } catch (e) {
+    t.is(e, 5);
+  }
+  t.is(pool._queued, 1);
+  t.is(pool._active.size, 2);
+  await b;
+  t.is(pool._queued, 0);
+  t.is(pool._active.size, 2);
+  await c;
+  t.is(pool._queued, 0);
+  t.is(pool._active.size, 1);
+  await d;
+  t.is(pool._queued, 0);
+  t.is(pool._active.size, 0);
+  try {
+    await e;
+    t.fail('Should have been rejected');
+  } catch (e) {
+    t.is(e.message, 'Queue size exceeded');
+  }
+});
 
 test('Setup successful', t => {
   t.truthy(client);
@@ -388,4 +424,26 @@ test('[System] Push events test', async t => {
   await sleep(100);
   t.is(state1, 3);
   t.is(state2, 2);
+});
+
+test('[System] middleware/pool', async t => {
+  const server = new Server(serverApp);
+  const poolM = oompaPool(2, 2);
+  const pool = poolM.pool;
+  server.use(poolM);
+  await server.listen(t.context.port);
+  const client = new Client(`ws://localhost:${t.context.port}`, clientMethods);
+  const [a, b, c, d, e] = Array.from({ length: 5 }).map((_, i) =>
+                                                      client.wait(
+                                                        (i + 1) * 100)
+                                                     );
+  await sleep(120);
+  t.is(pool._queued, 2);
+  t.is(pool._active.size, 2);
+  await Promise.all([a, b, c, d]);
+  try {
+    await e;
+  } catch (e) {
+    t.is(e, 'Error: Queue size exceeded');
+  }
 });
