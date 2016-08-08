@@ -64,7 +64,7 @@ test.afterEach(() => wsClientMock.send = null);
 
 test('[Unit] PromisePool test', async t => {
   const pool = new PromisePool(2, 2);
-  const factory = n => pool.wrap(() => sleep(n * 30));
+  const factory = n => pool.wrap(() => sleep(n * 40));
   const a = pool.run(() => Promise.reject(5));
   const [b, c, d, e] = Array.from({ length: 4 }).map((_, i) =>
                                                       factory(i + 1)());
@@ -435,9 +435,9 @@ test('[System] middleware/pool', async t => {
   const client = new Client(`ws://localhost:${t.context.port}`, clientMethods);
   const [a, b, c, d, e] = Array.from({ length: 5 }).map((_, i) =>
                                                       client.wait(
-                                                        (i + 1) * 30)
+                                                        (i + 1) * 50)
                                                      );
-  await sleep(65);
+  await sleep(80);
   t.is(pool._queued, 2);
   t.is(pool._active.size, 2);
   await Promise.all([a, b, c, d]);
