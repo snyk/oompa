@@ -428,13 +428,18 @@ test('[System] Push events test', async t => {
 
 test('[System] middleware/pool', async t => {
   const server = new Server(serverApp);
-  server.use(oompaPool(2, 2));
+  const poolM = oompaPool(2, 2);
+  const pool = poolM.pool;
+  server.use(poolM);
   await server.listen(t.context.port);
   const client = new Client(`ws://localhost:${t.context.port}`, clientMethods);
   const [a, b, c, d, e] = Array.from({ length: 5 }).map((_, i) =>
                                                       client.wait(
                                                         (i + 1) * 30)
                                                      );
+  await sleep(65);
+  t.is(pool._queued, 2);
+  t.is(pool._active.size, 2);
   await Promise.all([a, b, c, d]);
   try {
     await e;
