@@ -27,6 +27,9 @@ class OompaClient extends EventEmitter {
     this.on('clear', clearInterval);
     if (this.drainInterval) {
       this._agent = setInterval(() => {
+        if (!this.client || this.client.readyState !== this.client.OPEN) {
+          return;
+        }
         const pendingIdsSnapshot = new Set(
           Object.keys(this._pending)
             .filter(id => this._pending[id].con === this.client)
