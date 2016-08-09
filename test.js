@@ -456,3 +456,29 @@ test('[System] middleware/pool', async t => {
     t.is(e, 'Error: Queue size exceeded');
   }
 });
+
+test('[System] no hanging connections', async t => {
+  const PORT = t.context.port;
+  const URL = `ws://localhost:${PORT}`;
+  const server = new Server(serverApp);
+  await server.listen(PORT);
+  const client = new Client(URL, clientMethods, {
+    reconnectInterval: 50,
+    drainInterval: 50,
+  });
+  await eventOf(client, 'ready');
+  await new Promise(resolve => {
+    client.once('host-closed', resolve);
+    server.close();
+  });
+  await eventOf(client, 'reconnecting');
+  await eventOf(client, 'reconnecting');
+  await eventOf(client, 'reconnecting');
+  await eventOf(client, 'reconnecting');
+  await eventOf(client, 'reconnecting');
+  await eventOf(client, 'reconnecting');
+  const nServer = new Server(serverApp);
+  await nServer.listen(PORT);
+  await eventOf(client, 'reconnected');
+  t.is(nServer.server.clients.length, 1);
+});
