@@ -3,6 +3,7 @@ const EventEmitter = require('events');
 class PromisePool extends EventEmitter {
   constructor(concurrency=10, maxQueued=30) {
     super();
+    this.setMaxListeners(maxQueued * 2);
     this._concurrent = concurrency;
     this._maxQueued = maxQueued;
     this._queued = 0;
