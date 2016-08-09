@@ -64,6 +64,7 @@ test.afterEach(() => wsClientMock.send = null);
 
 test('[Unit] PromisePool test', async t => {
   const pool = new PromisePool(2, 2);
+  t.is(pool.getMaxListeners(), 4);
   const factory = n => pool.wrap(() => sleep(n * 40));
   const a = pool.run(() => Promise.reject(5));
   const [b, c, d, e] = Array.from({ length: 4 }).map((_, i) =>
