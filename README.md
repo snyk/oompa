@@ -1,5 +1,5 @@
 # oompa
-A tiny pick-me-app for websocket-based, stateless, microservices.
+A tiny pick-me-app for express-based, stateless, microservices.
 
 ## Installation
 
@@ -32,17 +32,14 @@ This is why the second parameter of the server's constructor should be a method 
 a promise that is resolved when we know all is well, and rejected otherwise.
 
 #### Server methods
-- `listen(port)` - Start listening @`port`. Return a promise resolved when the server is ready.
+- `new OompaServer(appSchema, healthcheck, middlewares)` - the first 2 parameters are discussed above, and `middlewares` is an array of `express` middleware to inject.
+- `listen(port)` - Start listening @`port`.
 - `close()` - Close both HTTP and WebSockets servers, returns a promise resolved when both are closed.
-- `use(middleware)` - see [middleware](#middleware) section below.
-- `push(eventType, eventData, scope)` - push an event of type `eventType` with payload `eventData` to all clients in `scope`. By default, `scope` is all connected clients, but it also accepts an array of connections, or a single connection object.
+- `api(middleware)` - see [middleware](#middleware) section below.
 
 #### Server events
-- `error(Error err)`: emitted when the healthcheck fails with error `err`.
-- `connection(Connection con)`: emitted when `con` is connected to the server.
-- `terminated(Connection con)`: emitted when `con` is disconnected from the server.
 - `reply(Reply r)`: emitted when a reply is ready to be sent. A reply has a type (`OK|ERR`) an `id` correlating to its request and `payload` or `error`.
-- `stale(Reply)`: emitted after the `reply` event, when finding no live connection to reply to.
+- `request({type, payload})`: emitted every time a request is made.
 
 #### An actual example
 
@@ -61,16 +58,8 @@ function healthcheck() {
 const server = new Server(serverApp, healthcheck);
 
 server
-  .on('connection',
-      () => logger.info('Connection created'))
-  .on('terminated',
-      () => logger.info('Connection terminated'))
-  .on('error',
-      err => logger.error(err, 'Server error'))
   .on('reply',
-      ({type, id}) => logger.debug(`[${type}] for request #${id}`))
-  .on('stale',
-      ({type, id}) => logger.warn(`[${type}] for stale request #${id}`))
+      ({type}) => logger.debug(`[${type}] for request`))
   .listen(PORT).then(() => logger.info(`Listening on port ${PORT}`));
 ```
 
@@ -80,7 +69,7 @@ The Oompa client is actually very lean. You can use it in one of two forms:
 #### Lean usage
 ```js
 const OompaClient = require('snyk-oompa/client');
-const client = new OompaClient('ws://localhost:9000');
+const client = new OompaClient('http://localhost:9000');
 
 // dispatch accepts the type and the payload of the task
 client.dispatch('ADD', { x: 1, y: 6 }).then(result => {
@@ -104,25 +93,16 @@ client.add(1, 2).then(...);
 ```
 
 #### Client methods
-- `constructor(url, methods, options)` - Create a new client with server @ `url`, the specified `methods`, with the following options:
-  - `noServer:false` don't actually try to attempt to connect on init.
-  - `reconnectInterval:1000` try to reconnect to a server after server CLOSE event every `reconnectInterval` ms.
-  - `timeout:10000` disregard an attempt of request as a timeout after `timeout` ms.
-  - `attempts:3` reject a request after `attempts` timeouts as a timeout error.
-  - `drainInterval:null` if specified, attempt reconnect to server after every `drainInterval` ms.
+- `constructor(url, methods)` - Create a new client with server @ `url`, and the specified `methods`
 - `ping(timeout)` - Check for the server's health. Wait for `timeout` ms until auto-rejecting.
 
 #### Client events
 
 - `error`: emitted by propagation from the underlying socket
-- `host-closed`: emitted when the host is closed abnormally (attempts to reconnect every 1 second)
-- `reconnect-failed`: emitted when an attempt to reconnect has failed
-- `reconnected`: emitted when the last attempt to reconnect was successful
-- `reconnecting`: emitted when the client is attempting to reconnect to the server
-- `ready`: emitted when the client is initially connected to the server
-- `OK:<TASK-ID>`: emitted when task <TASK-ID> received an OK reply from the server, with its payload
-- `ERR:<TASK-ID>`: emitted when task <TASK-ID> received an ERR reply from the server, with its error
-- **Server sent events:** the `OompaServer` can push events to any and all of its clients. They are treated just like any other event.
+- `request`: emitted when a request is made
+- `reply`: emitted when server reply is available
+- `reply:err`: emitted when server reply is available, and is an error
+- `reply:ok`: emitted when server reply is available, and is not an error
 
 ### Middleware
 Normally, a server simply forwards the request payload to its factory. Sometimes, however, you'd rather
@@ -155,27 +135,8 @@ function healthcheck() {
 }
 
 const server = new Server(serverApp, healthcheck);
-server.use(cacheMiddleware);
+server.api(cacheMiddleware);
 
 server
-  .on('connection',
-      () => logger.info('Connection created'))
-  .on('terminated',
-      () => logger.info('Connection terminated'))
-  .on('error',
-      err => logger.error(err, 'Server error'))
-  .on('reply',
-      ({type, id}) => logger.debug(`[${type}] for request #${id}`))
-  .on('stale',
-      ({type, id}) => logger.warn(`[${type}] for stale request #${id}`))
   .listen(PORT).then(() => logger.info(`Listening on port ${PORT}`));
 ```
-
-### Bundled Middleware
-`oompa` ships with some middleware:
-
-#### Oomp Pool
-The `pool(concurrency=10, maxQueued=30)` middleware makes sure only up to
-`concurrency` active API calls are handled, while up to `maxQueued` are queued.
-Should a new API request be made while the number of *queued* requests is at `maxQueued`,
-it would be rejected automatically. 
