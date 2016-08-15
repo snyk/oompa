@@ -1,9 +1,10 @@
 {
   "name": "snyk-oompa",
-  "description": "A tiny pick-me-app for websocket-based, stateless, microservices.",
-  "main": "index.js",
+  "description": "A tiny pick-me-app for express-based, stateless, microservices.",
+  "main": "server.js",
   "scripts": {
     "test": "snyk test && nyc ava -v",
+    "html-report": "nyc ava --reporter=html && open coverage/index.html",
     "coveralls": "nyc report --reporter=text-lcov | coveralls",
     "semantic-release": "semantic-release pre && npm publish && semantic-release post"
   },
@@ -14,7 +15,7 @@
   "author": "Alon Niv",
   "keywords": [
     "microservices",
-    "websockets",
+    "http",
     "stateless",
     "micro"
   ],
@@ -24,14 +25,14 @@
   },
   "homepage": "https://github.com/Snyk/oompa#readme",
   "dependencies": {
-    "uuid": "^2.0.2",
-    "ws": "^1.1.1"
+    "body-parser": "^1.15.2",
+    "express": "^4.14.0",
+    "request": "^2.74.0"
   },
   "devDependencies": {
     "ava": "^0.15.2",
     "coveralls": "^2.11.11",
     "nyc": "^6.6.1",
-    "request": "^2.72.0",
     "semantic-release": "^4.3.5",
     "snyk": "^1.17.1",
     "then-sleep": "^1.0.1"
