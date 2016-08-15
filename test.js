@@ -65,8 +65,8 @@ test('[System] Healthcheck test', async t => {
   const healthCheck = () => (isHealthy ?
     (isHealthy === 'timeout' ?
       new Promise(resolve => setTimeout(resolve, 100)) :
-      Promise.resolve()) :
-    Promise.reject());
+      Promise.resolve({ok: true})) :
+    Promise.reject({ok: false}));
   const server = new Server(serverApp, healthCheck);
   await new Promise(resolve => server.listen(port, resolve));
   const client = new Client(url, clientMethods);

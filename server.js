@@ -38,8 +38,8 @@ class OompaServer extends EventEmitter {
     }
     app.get('/healthcheck', (req, res) => {
       return this._healthcheck()
-        .then(() => res.json({ ok: true }))
-        .catch(() => res.status(500).json({ ok: false }));
+        .then(val => res.json(val))
+        .catch(err => res.status(500).json(err));
     });
     return app;
   }
