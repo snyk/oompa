@@ -68,7 +68,7 @@ class OompaServer extends EventEmitter {
       if (request.type in this._appSchema) {
         const chain = this._middlewareChain.concat([
           req => this._appSchema[request.type](req.payload),
-        ]).map((mid, i) => (req) => mid(req, chain[i + 1]));
+        ]).map((mid, i) => (req) => Promise.resolve(mid(req, chain[i + 1])));
         return Promise
           .resolve(request)
           .then(chain[0])
