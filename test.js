@@ -103,6 +103,7 @@ test('[System] server down errors', async t => {
 test('[System] Middleware test', async t => {
   const { port, url } = t.context;
   let counter = 0;
+  let errs = 0;
   const server = new Server(serverApp, undefined, [
     (req, res, next) => {
       counter++;
@@ -113,7 +114,22 @@ test('[System] Middleware test', async t => {
     req.payload.x = 5;
     return next(req);
   });
-  server.api((req, next, OK, ERR) => {
+  server.api((req, next) => next(req).catch(e => {
+    errs++;
+    if (!(e instanceof Error)) {
+      throw e;
+    }
+    throw new Error('foo');
+  }));
+  server.api((req, next) => {
+    if (req.payload.fail) {
+      return next(req).then(() => {
+        throw new Error('meow');
+      });
+    }
+    return next(req);
+  });
+  server.api((req, next) => {
     const { x, y } = req.payload;
     if (x == null || y == null) {
       return Promise.reject(0);
@@ -129,7 +145,14 @@ test('[System] Middleware test', async t => {
   } catch (e) {
     t.is(e, 0);
   }
-  t.is(counter, 2);
+  try {
+    await client.dispatch('ADD', {x: 1, y: 2, fail: true});
+    t.fail('Should have failed');
+  } catch (e) {
+    t.is(e.message, 'foo');
+  }
+  t.is(counter, 3);
+  t.is(errs, 2);
 });
 
 test('[System] Server shoutdown', async t => {
