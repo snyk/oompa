@@ -32,7 +32,7 @@ class OompaServer extends EventEmitter {
 
   _getBaseApp(middlewares) {
     const app = express();
-    app.use(json({ limit: '20mb' }));
+    app.use(json({ limit: '50mb' }));
     for (const mid of middlewares) {
       app.use(mid);
     }

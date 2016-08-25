@@ -4,9 +4,10 @@ const EventEmitter = require('events');
 const request = require('request');
 
 class OompaClient extends EventEmitter {
-  constructor(url, methods) {
+  constructor(url, methods, requestOptions) {
     super();
     this._url = url;
+    this._requestOptions = requestOptions || {};
     this._setupMethods(methods);
   }
 
@@ -23,11 +24,11 @@ class OompaClient extends EventEmitter {
 
   dispatch(type, payload) {
     this.emit('request');
-    return new Promise((resolve, reject) => request.post({
+    return new Promise((resolve, reject) => request.post(Object.assign({
       url: `${this._url}/api/${type}`,
       json: true,
       body: payload,
-    }, (err, res, body) => {
+    }, this._requestOptions), (err, res, body) => {
       if (err) {
         this.emit('error', err);
         return reject(err);
