@@ -59,6 +59,16 @@ test('[System] Bare client', async t => {
   t.is(await client.dispatch('ADD', {x: 3, y: 5}), 8);
 });
 
+test('[System] Bare client - request opts override', async t => {
+  const { port, url } = t.context;
+  const server = new Server(serverApp);
+  await new Promise(resolve => server.listen(port, resolve));
+  const client = new Client(url, null, {
+    url: url + '/api/SUB',
+  });
+  t.is(await client.dispatch('ADD', {x: 3, y: 5}), -2);
+});
+
 test('[System] Healthcheck test', async t => {
   const { port, url } = t.context;
   let isHealthy = true;
