@@ -153,7 +153,7 @@ test('[System] Middleware test', async t => {
     await client.add(3);
     t.fail('Should have failed');
   } catch (e) {
-    t.is(e, 0);
+    t.is(e.code, 500);
   }
   try {
     await client.dispatch('ADD', {x: 1, y: 2, fail: true});
