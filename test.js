@@ -129,7 +129,9 @@ test('[System] Middleware test', async t => {
     if (!(e instanceof Error)) {
       throw e;
     }
-    throw new Error('foo');
+    const err = new Error('foo');
+    err.code = 303;
+    throw err;
   }));
   server.api((req, next) => {
     if (req.payload.fail) {
@@ -160,6 +162,7 @@ test('[System] Middleware test', async t => {
     t.fail('Should have failed');
   } catch (e) {
     t.is(e.message, 'foo');
+    t.is(e.code, 303);
   }
   t.is(counter, 3);
   t.is(errs, 2);
