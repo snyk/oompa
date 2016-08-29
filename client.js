@@ -35,8 +35,10 @@ class OompaClient extends EventEmitter {
       }
       this.emit('reply', body);
       if (res.statusCode !== 200) {
-        this.emit('reply:err', body);
-        return reject(body);
+        const error = body || {};
+        error.code = res.statusCode;
+        this.emit('reply:err', error);
+        return reject(error);
       }
       this.emit('reply:ok', body);
       return resolve(body);
