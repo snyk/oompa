@@ -1,6 +1,7 @@
 const EventEmitter = require('events');
 const express = require('express');
 const { json } = require('body-parser');
+const compression = require('compression');
 
 class OompaServer extends EventEmitter {
   constructor(appSchema,
@@ -32,6 +33,7 @@ class OompaServer extends EventEmitter {
 
   _getBaseApp(middlewares) {
     const app = express();
+    app.use(compression());
     app.use(json({ limit: '50mb' }));
     for (const mid of middlewares) {
       app.use(mid);
