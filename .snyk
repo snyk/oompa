@@ -1,3 +1,30 @@
-version: v1.5.2
-ignore: {}
+# Snyk (https://snyk.io) policy file, patches or ignores known vulnerabilities.
+version: v1.7.0
+# ignores vulnerabilities until expiry date; change duration by modifying expiry date
+ignore:
+  'npm:ms:20170412':
+    - body-parser > debug > ms:
+        reason: None given
+        expires: '2017-06-16T11:49:34.597Z'
+    - express > debug > ms:
+        reason: None given
+        expires: '2017-06-16T11:49:34.598Z'
+    - express > send > debug > ms:
+        reason: None given
+        expires: '2017-06-16T11:49:34.599Z'
+    - express > serve-static > send > debug > ms:
+        reason: None given
+        expires: '2017-06-16T11:49:34.636Z'
+    - express > send > ms:
+        reason: None given
+        expires: '2017-06-16T11:49:34.636Z'
+    - express > serve-static > send > ms:
+        reason: None given
+        expires: '2017-06-16T11:49:34.637Z'
+    - compression > debug > ms:
+        reason: None given
+        expires: '2017-06-16T11:49:34.697Z'
+    - express > finalhandler > debug > ms:
+        reason: None given
+        expires: '2017-06-16T11:49:34.697Z'
 patch: {}
