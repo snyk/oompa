@@ -3,10 +3,7 @@ version: v1.7.1
 # ignores vulnerabilities until expiry date; change duration by modifying expiry date
 ignore:
   'npm:mime:20170907':
-    - express > send > mime:
-        reason: None given
-        expires: '2017-10-28T08:51:04.057Z'
-    - express > serve-static > send > mime:
+    - '*':
         reason: None given
         expires: '2017-10-28T08:51:04.057Z'
 # patches apply the minimum changes required to fix a vulnerability
